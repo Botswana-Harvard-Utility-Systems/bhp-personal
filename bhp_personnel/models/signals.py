@@ -98,7 +98,7 @@ def send_manager_on_employee_activation(user):
 
     site_url = f"https://{get_current_site(request=None).domain}"
 
-    frm = "bhp.se.dmc@gmail.com"
+    frm = "admin@bhp.org.bw"
     subject = 'New Employee Contracting'
     message = f"""\
          Hi {supervisor_firstname} {supervisor_lastname},
