@@ -63,7 +63,7 @@ def send_employee_activation(user):
     site_url = f"https://{get_current_site(request=None).domain}"  # current domain
 
     user_email = user.email  # user email
-    frm = "bhp.se.dmc@gmail.com"  # from email
+    frm = settings.DEFAULT_FROM_EMAIL  # from email
     subject = 'Time Sheet Activation Link'  # subject of the email
     message = f"""\
         Hi {user.first_name} {user.last_name},
