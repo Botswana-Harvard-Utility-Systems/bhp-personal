@@ -3,11 +3,12 @@ import string
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
-from django.contrib.auth.models import User, Group
+from django.conf import settings
+from django.contrib.auth.models import Group, User
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import EmailMultiAlternatives
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.models import Schedule
 from django_q.tasks import schedule
@@ -16,8 +17,8 @@ from edc_constants.constants import YES
 from edc_sms.classes import MessageSchedule
 from pytz import timezone
 
-from bhp_personnel.models import Consultant, Contract, ContractExtension, Employee, Pi, Contracting, \
-    Appraisal, PerformanceReview, Supervisor
+from bhp_personnel.models import Appraisal, Consultant, Contract, ContractExtension, \
+    Contracting, Employee, PerformanceReview, Pi, Supervisor
 from .renewal_intent import RenewalIntent
 
 
@@ -30,8 +31,9 @@ def employee_on_post_save(sender, instance, raw, created, **kwargs):
             try:
                 created_user = User.objects.get(email=instance.email)
             except User.DoesNotExist:
-                pwd = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits)
-                              for _ in range(8))
+                pwd = ''.join(
+                    random.SystemRandom().choice(string.ascii_uppercase + string.digits)
+                    for _ in range(8))
                 created_user = User.objects.create_user(username=instance.email,
                                                         email=instance.email,
                                                         password=pwd,
@@ -59,7 +61,8 @@ def send_employee_activation(user):
     """
     Takes each user one by one and sending an email to each
     """
-    reset_url = f"https://{get_current_site(request=None).domain}/password-reset/"  # current domain
+    reset_url = f"https://{get_current_site(request=None).domain}/password-reset/"  #
+    # current domain
     site_url = f"https://{get_current_site(request=None).domain}"  # current domain
 
     user_email = user.email  # user email
@@ -70,7 +73,8 @@ def send_employee_activation(user):
         <br>
         <br>
         Your account for the BHP Timesheet System has been set up.
-        The url to access the system is <a href="{site_url}" target="_blank">{site_url}</a>.
+        The url to access the system is <a href="{site_url}" target="_blank">
+        {site_url}</a>.
          <br>
          To activate your account, set the password first using the link below. 
         <br>
@@ -98,7 +102,7 @@ def send_manager_on_employee_activation(user):
 
     site_url = f"https://{get_current_site(request=None).domain}"
 
-    frm = "admin@bhp.org.bw"
+    frm = settings.DEFAULT_FROM_EMAIL
     subject = 'New Employee Contracting'
     message = f"""\
          Hi {supervisor_firstname} {supervisor_lastname},
@@ -151,7 +155,8 @@ def contract_on_post_save(sender, instance, raw, created, **kwargs):
 def contracting_on_post_save(sender, instance, raw, **kwargs):
     if not raw:
         try:
-            contract_obj = Contract.objects.filter(identifier=instance.identifier).latest('start_date')
+            contract_obj = Contract.objects.filter(identifier=instance.identifier).latest(
+                'start_date')
         except Contract.DoesNotExist:
             raise ValidationError(f'Missing contract, create a new contract')
         else:
@@ -234,7 +239,8 @@ def create_appraisal(instance=None, appraisal_type=''):
         assessment_type=appraisal_type,
     )
     if appraisal_type == 'contract_end' and instance.contracting:
-        create_performance_review(contracting=instance.contracting, appraisal_instance=appraisal_instance)
+        create_performance_review(contracting=instance.contracting,
+                                  appraisal_instance=appraisal_instance)
 
 
 def schedule_email_notification(instance=None, ext=False):
