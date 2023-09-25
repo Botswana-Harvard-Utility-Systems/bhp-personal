@@ -177,7 +177,7 @@ def contract_on_post_save(sender, instance, raw, created, **kwargs):
     Schedule email and sms reminder for 3 months before contract end
     date.
     """
-    if not raw:
+    if not raw and created:
         schedule_email_notification(instance)
 
 
@@ -270,7 +270,7 @@ def create_appraisal(instance=None, appraisal_type=''):
     @param instance: Contract instance
     @param appraisal_type: type of appraisal
     """
-    appraisal_instance, created = Appraisal.objects.get_or_create(
+    appraisal_instance, _ = Appraisal.objects.get_or_create(
         contract=instance,
         emp_identifier=instance.identifier,
         assessment_type=appraisal_type,
