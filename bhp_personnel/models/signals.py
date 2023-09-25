@@ -20,6 +20,7 @@ from pytz import timezone
 from bhp_personnel.models import Appraisal, Consultant, Contract, ContractExtension, \
     Contracting, Employee, PerformanceReview, Pi, Supervisor
 from .renewal_intent import RenewalIntent
+from . import PerformanceAssessment
 
 
 @receiver(post_save, weak=False, sender=Employee,
@@ -93,6 +94,36 @@ def send_employee_activation(user):
     except Exception as e:
         raise
 
+def send_manager_on_employee_activation(user):
+    mask = Employee.objects.get(id=user.id).supervisor_id
+    supervisor_email = Supervisor.objects.get(id=str(mask)).email
+    supervisor_firstname = Supervisor.objects.get(id=str(mask)).first_name
+    supervisor_lastname = Supervisor.objects.get(id=str(mask)).last_name
+
+    site_url = f"https://{get_current_site(request=None).domain}"
+
+    frm = settings.DEFAULT_FROM_EMAIL
+    subject = 'New Employee Contracting'
+    message = f"""\
+         Hi {supervisor_firstname} {supervisor_lastname},
+        <br>
+        <br>
+        An new account for an employee has been set up.
+        <br>
+        <br>
+        <a href="{site_url}" target="_blank">Visit Site</a>
+        <br>
+        <br>
+        Good Day 😃
+        """
+
+    msg = EmailMultiAlternatives(subject, message, frm, (supervisor_email,))
+    msg.content_subtype = 'html'
+    print("Sending to : ", supervisor_email)
+    try:
+        msg.send()
+    except Exception as e:
+        raise
 
 def send_manager_on_employee_activation(user):
     mask = Employee.objects.get(id=user.id).supervisor_id
@@ -217,6 +248,12 @@ def create_performance_review(contracting=None, appraisal_instance=None):
     @param instance: Contracting instance
     @param appraisal_instance: appraisal instance
     """
+    PerformanceAssessment.objects.create(contract=instance,
+                                         emp_identifier=instance.identifier,
+                                         review='mid_year')
+    PerformanceAssessment.objects.create(contract=instance,
+                                         emp_identifier=instance.identifier,
+                                         review='contract_end')
     job_description = getattr(contracting, 'job_description', None)
     if job_description:
         for job_description_set in job_description.jobdescriptionkpa_set.all():
