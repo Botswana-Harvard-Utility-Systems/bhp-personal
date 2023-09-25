@@ -15,14 +15,11 @@ from django_q.tasks import schedule
 from edc_base.utils import get_utcnow
 from edc_sms.classes import MessageSchedule
 
-<<<<<<< HEAD
-from . import Consultant, Contract, ContractExtension, Employee, Pi
-from . import PerformanceAssessment, KeyPerformanceArea, Supervisor
-=======
+from . import PerformanceAssessment, KeyPerformanceArea
+
 from bhp_personnel.models import Appraisal, Consultant, Contract, ContractExtension, \
     Contracting, Employee, PerformanceReview, Pi, Supervisor
 from .renewal_intent import RenewalIntent
->>>>>>> 8bcf70d (fix(Signals): Refactor bhp_personnel models signals)
 
 
 @receiver(post_save, weak=False, sender=Employee,
@@ -143,8 +140,6 @@ def contract_on_post_save(sender, instance, raw, created, **kwargs):
     date.
     """
     if not raw and created:
-        create_appraisals(instance)
-        create_key_performance_areas(job_description=instance.job_description)
         schedule_email_notification(instance)
 
 
@@ -217,18 +212,17 @@ def create_key_performance_areas(job_description=None):
             assessment_period_type='contract_end')
 
 
-def create_appraisals(instance=None):
+def create_performance_review(contracting=None, appraisal_instance=None):
     """
     Creates two appraisals on post save of a contract
     """
-<<<<<<< HEAD
     PerformanceAssessment.objects.create(contract=instance,
                                          emp_identifier=instance.identifier,
                                          review='mid_year')
     PerformanceAssessment.objects.create(contract=instance,
                                          emp_identifier=instance.identifier,
                                          review='contract_end')
-=======
+
     job_description = getattr(contracting, 'job_description', None)
     if job_description:
         for job_description_set in job_description.jobdescriptionkpa_set.all():
@@ -245,7 +239,7 @@ def create_appraisal(instance=None, appraisal_type=''):
     @param instance: Contract instance
     @param appraisal_type: type of appraisal
     """
-    appraisal_instance, created = Appraisal.objects.get_or_create(
+    appraisal_instance, _ = Appraisal.objects.get_or_create(
         contract=instance,
         emp_identifier=instance.identifier,
         assessment_type=appraisal_type,
@@ -253,7 +247,6 @@ def create_appraisal(instance=None, appraisal_type=''):
     if appraisal_type == 'contract_end' and instance.contracting:
         create_performance_review(contracting=instance.contracting,
                                   appraisal_instance=appraisal_instance)
->>>>>>> 8bcf70d (fix(Signals): Refactor bhp_personnel models signals)
 
 
 def schedule_email_notification(instance=None, ext=False):
