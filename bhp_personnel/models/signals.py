@@ -3,9 +3,10 @@ import random
 import string
 
 from dateutil.relativedelta import relativedelta
-from django.contrib.auth.models import User, Group
+from django.conf import settings
+from django.contrib.auth.models import Group, User
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -14,8 +15,14 @@ from django_q.tasks import schedule
 from edc_base.utils import get_utcnow
 from edc_sms.classes import MessageSchedule
 
+<<<<<<< HEAD
 from . import Consultant, Contract, ContractExtension, Employee, Pi
 from . import PerformanceAssessment, KeyPerformanceArea, Supervisor
+=======
+from bhp_personnel.models import Appraisal, Consultant, Contract, ContractExtension, \
+    Contracting, Employee, PerformanceReview, Pi, Supervisor
+from .renewal_intent import RenewalIntent
+>>>>>>> 8bcf70d (fix(Signals): Refactor bhp_personnel models signals)
 
 
 @receiver(post_save, weak=False, sender=Employee,
@@ -27,8 +34,9 @@ def employee_on_post_save(sender, instance, raw, created, **kwargs):
             try:
                 created_user = User.objects.get(email=instance.email)
             except User.DoesNotExist:
-                pwd = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits)
-                              for _ in range(8))
+                pwd = ''.join(
+                    random.SystemRandom().choice(string.ascii_uppercase + string.digits)
+                    for _ in range(8))
                 created_user = User.objects.create_user(username=instance.email,
                                          email=instance.email,
                                          password=pwd,
@@ -50,19 +58,20 @@ def send_employee_activation(user):
     """
     Takes each user one by one and sending an email to each
     """
-
-    reset_url = f"https://{get_current_site(request=None).domain}/password-reset/"  # current domain
+    reset_url = f"https://{get_current_site(request=None).domain}/password-reset/"  #
+    # current domain
     site_url = f"https://{get_current_site(request=None).domain}"  # current domain
 
     user_email = user.email  # user email
-    frm = "bhp.se.dmc@gmail.com"  # from email
+    frm = settings.DEFAULT_FROM_EMAIL  # from email
     subject = 'Time Sheet Activation Link'  # subject of the email
     message = f"""\
         Hi {user.first_name} {user.last_name},
         <br>
         <br>
         Your account for the BHP Timesheet System has been set up.
-        The url to access the system is <a href="{site_url}" target="_blank">{site_url}</a>.
+        The url to access the system is <a href="{site_url}" target="_blank">
+        {site_url}</a>.
          <br>
          To activate your account, set the password first using the link below. 
         <br>
@@ -81,6 +90,36 @@ def send_employee_activation(user):
     except Exception as e:
         raise
 
+def send_manager_on_employee_activation(user):
+    mask = Employee.objects.get(id=user.id).supervisor_id
+    supervisor_email = Supervisor.objects.get(id=str(mask)).email
+    supervisor_firstname = Supervisor.objects.get(id=str(mask)).first_name
+    supervisor_lastname = Supervisor.objects.get(id=str(mask)).last_name
+
+    site_url = f"https://{get_current_site(request=None).domain}"
+
+    frm = settings.DEFAULT_FROM_EMAIL
+    subject = 'New Employee Contracting'
+    message = f"""\
+         Hi {supervisor_firstname} {supervisor_lastname},
+        <br>
+        <br>
+        An new account for an employee has been set up.
+        <br>
+        <br>
+        <a href="{site_url}" target="_blank">Visit Site</a>
+        <br>
+        <br>
+        Good Day 😃
+        """
+
+    msg = EmailMultiAlternatives(subject, message, frm, (supervisor_email,))
+    msg.content_subtype = 'html'
+    print("Sending to : ", supervisor_email)
+    try:
+        msg.send()
+    except Exception as e:
+        raise
 
 @receiver(post_save, weak=False, sender=Pi,
           dispatch_uid='pi_on_post_save')
@@ -107,7 +146,39 @@ def contract_on_post_save(sender, instance, raw, created, **kwargs):
         create_appraisals(instance)
         create_key_performance_areas(job_description=instance.job_description)
         schedule_email_notification(instance)
-        schedule_sms_notification(instance)
+
+
+@receiver(post_save, weak=False, sender=Contracting,
+          dispatch_uid='contracting_on_post_save')
+def contracting_on_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        try:
+            contract_obj = Contract.objects.filter(identifier=instance.identifier).latest(
+                'start_date')
+        except Contract.DoesNotExist:
+            raise ValidationError(f'Missing contract, create a new contract')
+        else:
+            instance.contract = contract_obj
+            create_appraisal(contract_obj, appraisal_type='mid_year')
+
+
+def update_contracting(instance=None):
+    """
+    Updating contracting details on post contract update
+    """
+    contracting = None
+
+    if instance:
+        try:
+            contracting = Contracting.objects.get(
+                identifier=instance.identifier,
+                contract_id__isnull=True)
+        except Contracting.DoesNotExist:
+            raise ValidationError(f'Contracting for this contract does not exist '
+                                  'please contact the Administrator.')
+        else:
+            contracting.contract = instance
+            contracting.save()
 
 
 @receiver(post_save, weak=False, sender=ContractExtension,
@@ -150,12 +221,39 @@ def create_appraisals(instance=None):
     """
     Creates two appraisals on post save of a contract
     """
+<<<<<<< HEAD
     PerformanceAssessment.objects.create(contract=instance,
                                          emp_identifier=instance.identifier,
                                          review='mid_year')
     PerformanceAssessment.objects.create(contract=instance,
                                          emp_identifier=instance.identifier,
                                          review='contract_end')
+=======
+    job_description = getattr(contracting, 'job_description', None)
+    if job_description:
+        for job_description_set in job_description.jobdescriptionkpa_set.all():
+            PerformanceReview.objects.update_or_create(
+                appraisal=appraisal_instance,
+                kpa_title=job_description_set.key_performance_area,
+                kpa_description=job_description_set.kpa_tasks
+            )
+
+
+def create_appraisal(instance=None, appraisal_type=''):
+    """
+    Creates appraisal on post save of a contract
+    @param instance: Contract instance
+    @param appraisal_type: type of appraisal
+    """
+    appraisal_instance, created = Appraisal.objects.get_or_create(
+        contract=instance,
+        emp_identifier=instance.identifier,
+        assessment_type=appraisal_type,
+    )
+    if appraisal_type == 'contract_end' and instance.contracting:
+        create_performance_review(contracting=instance.contracting,
+                                  appraisal_instance=appraisal_instance)
+>>>>>>> 8bcf70d (fix(Signals): Refactor bhp_personnel models signals)
 
 
 def schedule_email_notification(instance=None, ext=False):
