@@ -17,10 +17,15 @@ from edc_constants.constants import YES
 from edc_sms.classes import MessageSchedule
 from pytz import timezone
 
-from bhp_personnel.models import Appraisal, Consultant, Contract, ContractExtension, \
-    Contracting, Employee, PerformanceReview, Pi, Supervisor
+from .appraisal import Appraisal
+from .consultant import Consultant
+from .contract import Contract, ContractExtension
+from .contracting import Contracting
+from .employee import Employee, Supervisor
+from .performance_assessment import PerformanceAssessment
+from .performance_review import PerformanceReview
+from .pi import Pi
 from .renewal_intent import RenewalIntent
-from . import PerformanceAssessment
 
 
 @receiver(post_save, weak=False, sender=Employee,
@@ -248,11 +253,11 @@ def create_performance_review(contracting=None, appraisal_instance=None):
     @param instance: Contracting instance
     @param appraisal_instance: appraisal instance
     """
-    PerformanceAssessment.objects.create(contract=instance,
-                                         emp_identifier=instance.identifier,
+    PerformanceAssessment.objects.create(contract=contracting,
+                                         emp_identifier=contracting.identifier,
                                          review='mid_year')
-    PerformanceAssessment.objects.create(contract=instance,
-                                         emp_identifier=instance.identifier,
+    PerformanceAssessment.objects.create(contract=contracting,
+                                         emp_identifier=contracting.identifier,
                                          review='contract_end')
     job_description = getattr(contracting, 'job_description', None)
     if job_description:
