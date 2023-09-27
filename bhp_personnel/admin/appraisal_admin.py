@@ -45,7 +45,9 @@ class AppraisalAdmin(ModelAdminMixin, admin.ModelAdmin):
 
     radio_fields = {
         'assessment_type': admin.VERTICAL, }
-    search_fields = ('emp_identifier', )
+    readonly_fields = ('assessment_type',)
+    search_fields = ('emp_identifier',)
+
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         form.request = request

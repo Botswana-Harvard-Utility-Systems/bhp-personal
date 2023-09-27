@@ -48,10 +48,6 @@ class AppraisalForm(FormValidatorMixin, SiteModelFormMixin, forms.ModelForm):
         label='Employee ID',
         widget=forms.TextInput(attrs={'readonly': 'readonly'}))
 
-    assessment_type = forms.CharField(
-        label='Assessment Type',
-        widget=forms.TextInput(attrs={'readonly': 'readonly'}))
-
     class Meta:
         model = Appraisal
         fields = '__all__'

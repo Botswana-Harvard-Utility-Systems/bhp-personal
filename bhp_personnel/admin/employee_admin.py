@@ -26,6 +26,7 @@ class LicenceInline(StackedInlineMixin, ModelAdminFormAutoNumberMixin,
                 'number',
                 'issued_by',
                 'issue_date',
+                'expiration_date',
             )
         }),
         audit_fieldset_tuple
